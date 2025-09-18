@@ -1,4 +1,4 @@
-# Atelopus-glyphus-immune-microbial-interplay-
+# Atelopus-glyphus-immune-microbial-paper-
 Microbial processing and analyses for Gratwick et al.
 
 All associated data and scripts for the following manuscript in preparation:
