@@ -1,0 +1,1095 @@
+---
+title: "A.glyphus_ITS_analyses_2025"
+author: "Arik Hartmann"
+date: "2025-9-20"
+output: html_document
+---
+
+```{r Setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+knitr::opts_knit$set(root.dir = 'C:/Users/arikh/Desktop/glyphus_ITS/Glyphus_ITS_full/Glyphus_ITS-429864436')
+
+```
+
+## R Markdown
+
+```{r Load libraries}
+quiet_library <- function(pkgs) {
+  for (p in pkgs) {
+    try({
+      suppressWarnings(
+        suppressMessages(
+          library(p, character.only = TRUE, quietly = TRUE, warn.conflicts = FALSE)
+        )
+      )
+    }, silent = TRUE)
+  }
+}
+
+quiet_library(c(
+  "devtools","dada2","DECIPHER","phyloseq","phangorn","tidyverse",
+  "microViz","emmeans","ecole","FSA","pairwiseAdonis","ggpubr",
+  "picante","vegan","car","lme4","patchwork","jtools","DHARMa","microbiome",
+  "BiocGenerics"
+))
+
+```
+
+```{r Generate phyloseq}
+
+# ======= 1) Load inputs =======
+taxa           <- readRDS("taxa_taxid.rds")         # tax_table matrix
+seqtab.nochim  <- readRDS("seqtabnochim.rds")       # ASV table 
+treeNJ         <- readRDS("treeNJ.rds")             # phylo tree
+map            <- import_qiime_sample_data("metadata3.txt")
+
+# Ensure sample names line up
+rownames(map) <- map$SampleID
+
+# ---- OTU orientation: make taxa rows = TRUE (no missing arg this time) ----
+seqmat <- as.matrix(seqtab.nochim)
+row_hits <- if (!is.null(rownames(seqmat))) sum(rownames(seqmat) %in% rownames(map)) else 0
+col_hits <- if (!is.null(colnames(seqmat))) sum(colnames(seqmat) %in% rownames(map)) else 0
+# DADA2-style typically has samples in rows → taxa in columns
+taxa_rows <- !(row_hits > col_hits)  # if rows look like samples, taxa are NOT rows
+
+otu <- if (taxa_rows) {
+  otu_table(seqmat, taxa_are_rows = TRUE)
+} else {
+  otu_table(t(seqmat), taxa_are_rows = TRUE)
+}
+
+# ---- Build phyloseq ----
+ps <- phyloseq(
+  otu,
+  tax_table(as.matrix(taxa)),
+  phy_tree(treeNJ),
+  sample_data(map)
+)
+
+# Build phyloseq
+ps <- phyloseq(
+  otu,
+  tax_table(as.matrix(taxa)),
+  phy_tree(treeNJ),
+  sample_data(map)
+)
+
+# Attach DNA sequences if taxa names look like DNA; otherwise skip
+taxn <- taxa_names(ps)
+if (all(grepl("^[ACGTN]+$", taxn))) {
+  dna <- Biostrings::DNAStringSet(taxn); names(dna) <- taxn
+  ps  <- merge_phyloseq(ps, dna)
+}
+
+# Rename taxa to ASV# for tidy plotting/exports
+taxa_names(ps) <- paste0("ASV", seq_len(ntaxa(ps)))
+
+# ======= 2) Tree rooting (midpoint if unrooted; no random rooting) =======
+if (!is.rooted(phy_tree(ps))) {
+  phy_tree(ps) <- phangorn::midpoint(phy_tree(ps))
+}
+stopifnot(is.rooted(phy_tree(ps)))
+
+# ======= 3) Remove non-sample IDs and filter out Bd =======
+nonsamples <- c(
+  "NPCP1","NPCP2","NPCP3","NSC101323","NSC1013232","NSC51723","NSC517232",
+  "NSC91323","NSC913232","NSC92823","NSC928232","NXC51524","NXC51624",
+  "NXCP1","PPCP1","PPCP2","PPCP3","PXC51524","PXC51624","PXC53124","PXCP1","PXCP2"
+)
+
+ps2 <- subset_samples(ps, !(SampleID %in% nonsamples))
+
+# Drop Bd reads by taxonomy label if present
+if ("Species" %in% colnames(tax_table(ps2))) {
+  ps3 <- subset_taxa(ps2, Species != "s__dendrobatidis")
+} else {
+  ps3 <- ps2
+  message("Species column not found in tax_table; skipping Bd removal.")
+}
+
+# Prune empty taxa/samples that may result from filtering
+ps3 <- prune_taxa(taxa_sums(ps3) > 0, ps3)
+ps3 <- prune_samples(sample_sums(ps3) > 0, ps3)
+
+# ======= 4) Rarefaction: auto-choose depth + diagnostics =======
+# Helper to choose a depth that (a) keeps >= retain_frac of samples
+# and (b) has a small richness slope (median ΔS per 'slope_step' reads <= slope_thresh)
+#choose_rarefy_depth <- function(ps, retain_frac = 0.90, slope_step = 100, slope_thresh = 0.5) {
+##  # slope_thresh is ΔS per slope_step reads (e.g., 0.5 species per 100 reads)
+#  lib <- sample_sums(ps)
+#  lib <- lib[is.finite(lib)]
+#  stopifnot(length(lib) >= 3)
+
+#  lib_sorted <- sort(lib)
+#  # Candidate depths = unique library sizes between 60th percentile and min
+#  lo <- unname(quantile(lib_sorted, probs = 1 - retain_frac))
+#  hi <- min(lib_sorted)
+#  cand <- sort(unique(c(seq(floor(lo), hi, length.out = 25), floor(lo), hi)))
+#  cand <- cand[cand >= 2 * slope_step] # need at least step for slope calc
+#  if (length(cand) == 0) cand <- hi
+
+  # Build abundance matrix: samples x taxa
+#  mat <- as(otu_table(ps), "matrix")
+#  if (!taxa_are_rows(ps)) mat <- t(mat)
+
+  # For each candidate depth: retention, median slope
+#  diag <- lapply(cand, function(d) {
+#    keep <- which(lib >= d)
+#    if (length(keep) < 3) {
+#      return(tibble(depth = d, kept = length(keep), kept_frac = length(keep)/length(lib),
+#                    median_slope = NA_real_))
+#    }
+#    msub <- mat[keep, , drop = FALSE]
+#    s_d     <- vegan::rarefy(msub, sample = d)
+#    s_dstep <- vegan::rarefy(msub, sample = d + slope_step)
+#    slope   <- (s_dstep - s_d) / slope_step
+#    tibble(depth = d,
+#           kept = length(keep),
+#           kept_frac = length(keep)/length(lib),
+#           median_slope = median(slope, na.rm = TRUE))
+#  })
+#  diag <- bind_rows(diag)
+
+  # Choose the smallest depth meeting both criteria; otherwise fallback to depth at max kept_frac
+#  ok <- diag %>%
+#    filter(kept_frac >= retain_frac, !is.na(median_slope), median_slope <= slope_thresh)
+#  if (nrow(ok) > 0) {
+#    best <- ok %>% arrange(depth) %>% slice(1)
+#  } else {
+#    best <- diag %>% arrange(desc(kept_frac), depth) %>% slice(1)
+#    message("No depth met slope & retention criteria; using fallback with highest retention.")
+#  }
+
+#  list(selected_depth = best$depth,
+#       diagnostics = diag)
+#}
+
+#set.seed(711)
+
+#diag_res <- choose_rarefy_depth(ps3, retain_frac = 0.90, slope_step = 100, slope_thresh = 0.5)
+#rare_depth <- as.integer(diag_res$selected_depth)
+#diag_tbl   <- diag_res$diagnostics
+
+#message(sprintf(
+#  "Chosen rarefaction depth: %d (keeps >= %.0f%% samples; median ΔS per 100 reads ≤ %.2f if satisfied)",
+#  rare_depth, 100 * 0.90, 0.5
+#))
+
+# Preview sample-size distribution & projected retention
+#summary(sample_sums(ps3))
+#print(diag_tbl %>% arrange(depth) %>% tail(5))
+
+# Optional: visualize rarefaction curves (quick base plot) & diagnostics
+#pdf("rarefaction_curves.pdf", width = 7, height = 5)
+#vegan::rarecurve(t(as(otu_table(ps3), "matrix")),
+#                 step = 50, lwd = 0.6, ylab = "ASV richness", xlab = "Reads")
+#dev.off()
+
+#write_csv(diag_tbl, "rarefaction_depth_diagnostics.csv")
+
+# ======= 5) Perform rarefaction (without replacement) at chosen depth =======
+fun.rar <- phyloseq::rarefy_even_depth(
+  ps3,
+  rngseed     = 711,
+  sample.size = 1300, # ~retains 83% of samples
+  replace     = FALSE,
+  verbose     = TRUE
+)
+
+# Summaries & exports
+before <- tibble(SampleID = sample_names(ps3),
+                 reads_pre = sample_sums(ps3))
+after  <- tibble(SampleID = sample_names(fun.rar),
+                 reads_post = sample_sums(fun.rar))
+keep   <- inner_join(before, after, by = "SampleID") %>%
+  mutate(retained = TRUE)
+dropped <- anti_join(before, keep, by = "SampleID") %>%
+  mutate(retained = FALSE)
+
+rare_summary <- bind_rows(keep, dropped) %>%
+  mutate(kept_fraction = mean(retained)) %>%
+  arrange(desc(retained), reads_pre)
+
+#Retained 187 of 226 (82.7% of samples retained)
+readr::write_csv(rare_summary, "rarefaction_sample_retention.csv")
+
+# Optional: save the objects
+saveRDS(fun.rar, file = "fun_rarefied_ps.rds")
+
+# Set experiment days as factors
+fun.rar <- fun.rar %>%
+  ps_mutate(expday = factor(FINAL.EXPERIMENT.DAY, levels = c("day-1-E1", "day46-E1", "day118-E1", "day14-E2", "day29-E2")))
+
+# Define group labels by Treatment and expday and bd exposure ----
+fun.rar <- fun.rar %>%
+  ps_mutate(
+    T2 = case_when(
+      Treatment %in% c("UTA") ~ "UTA",
+      Treatment %in% c("UVC", "UV") ~ "Bd_naive",
+      Treatment %in% c("V", "VC") ~ "Bd_exposed"
+    ),
+    bd2 = case_when(
+      expday %in% c("day14-E2", "day29-E2") & Treatment %in% c("UV", "V") ~ "Yes",
+      TRUE ~ "No"
+    )
+  )
+
+#Combine group and exposure info in the phyloseq metadata ----
+                                     
+fun.rar <- fun.rar %>% ps_mutate(T3 = case_when(
+  T2 == "UTA" & bd2 == "No"~"untreated",
+  T2 == "Bd_naive" & bd2 == "No"~"mock-mock",
+  T2 == "Bd_naive" & bd2 == "Yes"~"mock-Bd",
+  T2 == "Bd_exposed" & bd2 == "No"~"Bd-mock",
+  T2 == "Bd_exposed" & bd2 == "Yes"~"Bd-Bd"),
+    T3 = factor(T3, levels = c("untreated", "mock-mock", "mock-Bd", "Bd-mock", "Bd-Bd")),
+    shape_group = if_else(bd2 == "Yes", "Triangle", "Circle"),
+    ellipse_linetype = if_else(T3 %in% c("mock-Bd", "Bd-Bd"), "dashed", "solid")
+  )
+  
+
+# Extract metadata from phyloseq object
+fun.meta <- meta(fun.rar)
+
+OTU1 = as(otu_table(fun.rar), "matrix")
+if(taxa_are_rows(fun.rar)){OTU1 <- t(OTU1)}
+
+# Coerce to data.frame
+OTUdf = as.data.frame(OTU1)
+write.csv(OTUdf, file="glyphus_OTU_table_rarified.csv")
+
+# Add the rownames as a new colum for easy integration later.
+fun.meta$sam_name <- rownames(fun.meta)
+
+```
+
+```{r Alpha and Beta diversity}
+# calculate Alpha Diversity measures---
+fun.div <- microbiome::alpha(fun.rar, index = "all")
+
+# Add the rownames to diversity table
+fun.div$sam_name <- rownames(fun.div)
+
+#set order for treatment and experiment days
+fun.meta$expday = factor(fun.meta$FINAL.EXPERIMENT.DAY, levels = c("day-1-E1", "day46-E1", "day118-E1", "day14-E2", "day29-E2"))
+
+
+# merge diversity with meta data
+div.df <- merge(fun.div,fun.meta, by = "sam_name")
+
+# check the tables
+colnames(fun.meta)
+colnames(div.df)
+
+
+
+# ------------ helpers (export + tidiers) -----------
+# ----- robust metadata (no duplicate SampleID) -----
+meta_all <- as(sample_data(fun.rar), "data.frame")
+meta_all$SampleID <- rownames(meta_all)
+meta_all <- tibble::as_tibble(meta_all)
+
+# choose grouping column
+group_col <- if ("T3" %in% names(meta_all)) "T3" else if ("Treatment" %in% names(meta_all)) "Treatment" else stop("Need a grouping column (T3 or Treatment).")
+
+# blocking (optional)
+has_block <- "FrogID" %in% names(meta_all)
+perm_base <- if (has_block) how(nperm = 999, blocks = meta_all$FrogID, Within(type = "free")) else 999
+
+# distances
+dist_list <- list(
+  bray   = phyloseq::distance(fun.rar, "bray"),
+  unifrac_unweighted = phyloseq::distance(fun.rar, "unifrac"),
+  unifrac_weighted   = phyloseq::distance(fun.rar, "wunifrac"),
+  jaccard = phyloseq::distance(fun.rar, "jaccard")
+)
+
+# export helpers (unchanged)
+out_dir <- "outputs/permanova_streamlined"; dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
+to_df <- function(x, name=NULL){ if (is.null(x)) return(NULL); 
+  if (inherits(x, c("anova","adonis"))) { df <- as.data.frame(x); df <- tibble::rownames_to_column(df,"term"); if(!is.null(name)) df$.source <- name; return(df) }
+  if (is.data.frame(x)) { df <- x; if(!"contrast"%in%names(df) && !is.null(rownames(df)) && any(nchar(rownames(df))>0)) df <- tibble::rownames_to_column(df,"contrast"); if(!is.null(name)) df$.source <- name; return(df) }
+  if (inherits(x,"TukeyHSD") || is.list(x)) { pieces <- lapply(names(x), function(nm){ xi <- x[[nm]]; if (is.null(xi)) return(NULL); dfi <- as.data.frame(xi); dfi <- tibble::rownames_to_column(dfi,"contrast"); dfi$term <- nm; dfi }); df <- bind_rows(pieces); if(!is.null(name)) df$.source <- name; return(df) }
+  tryCatch({ df <- as.data.frame(x); df <- tibble::rownames_to_column(df,"term"); if(!is.null(name)) df$.source <- name; df }, error=function(e) NULL)
+}
+
+write_csv_safe <- function(df, filename){ if (is.null(df) || nrow(df)==0) { message("Skipping ",filename," (empty)."); return(invisible(NULL)) }; readr::write_csv(df, file.path(out_dir, filename)); message("Wrote: ", file.path(out_dir, filename)) }
+pairwise_dispatch <- function(d, group, p_adjust_m="BH"){
+  if (requireNamespace("pairwiseAdonis", quietly=TRUE)) return(pairwiseAdonis::pairwise.adonis(d, factors=group, p.adjust.m=p_adjust_m))
+  if (exists("pairwise.adonis")) return(pairwise.adonis(d, factors=group, p.adjust.m=p_adjust_m))
+  warning("pairwiseAdonis not installed; skipping pairwise PERMANOVA."); NULL
+}
+
+# optional Excel bundle
+wb <- if (requireNamespace("openxlsx", quietly = TRUE)) openxlsx::createWorkbook() else NULL
+add_sheet_safe <- function(wb, df, nm){ if (is.null(wb) || is.null(df) || nrow(df)==0) return(); openxlsx::addWorksheet(wb, nm); openxlsx::writeData(wb, nm, df) }
+
+for (lab in names(dist_list)) {
+  d <- dist_list[[lab]]
+  ids <- labels(d)
+
+  # align metadata to distance
+  meta <- meta_all %>% filter(SampleID %in% ids)
+  meta <- meta[match(ids, meta$SampleID), , drop = FALSE]
+
+  # drop NA groups
+  keep <- !is.na(meta[[group_col]])
+  if (any(!keep)) {
+    d <- as.dist(as.matrix(d)[keep, keep])
+    meta <- meta[keep, , drop = FALSE]
+    ids <- labels(d)
+  }
+
+  # pairwise PERMANOVA
+  pw <- tryCatch(pairwise_dispatch(d, meta[[group_col]]), error=function(e){ message("pairwise error (",lab,"): ", e$message); NULL })
+  pw_df <- to_df(pw, paste0("pairwise_", lab))
+  write_csv_safe(pw_df, paste0("pairwise_PERMANOVA_", lab, ".csv")); add_sheet_safe(wb, pw_df, paste0("pairwise_", lab))
+
+  # adonis2 with blocking if available
+  perm <- if (has_block) perm_base else 999
+  form <- as.formula(paste("d ~", group_col, "* FINAL.EXPERIMENT.DAY"))
+  a2 <- tryCatch(vegan::adonis2(form, data = meta, permutations = perm),
+                 error=function(e){ message("adonis2 error (",lab,"): ", e$message); NULL })
+  a2_df <- to_df(a2, paste0("adonis2_", lab))
+  write_csv_safe(a2_df, paste0("adonis2_blocked_", lab, ".csv")); add_sheet_safe(wb, a2_df, paste0("adonis2_", lab))
+
+  # dispersion + Tukey
+  bd <- tryCatch(betadisper(d, meta[[group_col]]), error=function(e){ message("betadisper error (",lab,"): ", e$message); NULL })
+  bd_anova <- tryCatch(if (!is.null(bd)) anova(bd) else NULL, error=function(e) NULL)
+  bd_tukey <- tryCatch(if (!is.null(bd)) TukeyHSD(bd) else NULL, error=function(e) NULL)
+
+  bd_anova_df <- to_df(bd_anova, paste0("betadisper_anova_", lab))
+  bd_tukey_df <- to_df(bd_tukey, paste0("betadisper_Tukey_", lab))
+  write_csv_safe(bd_anova_df, paste0("betadisper_anova_", lab, ".csv")); add_sheet_safe(wb, bd_anova_df, paste0("bd_anova_", lab))
+  write_csv_safe(bd_tukey_df, paste0("betadisper_Tukey_", lab, ".csv")); add_sheet_safe(wb, bd_tukey_df, paste0("bd_Tukey_", lab))
+}
+
+if (!is.null(wb)) {
+  xlsx_path <- file.path(out_dir, "all_metrics_PERMANOVA_dispersion.xlsx")
+  openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+  message("Wrote: ", xlsx_path)
+}
+
+
+```
+
+```{r Tests }
+# Anova and Pairwise tests
+# ===== 0) Load & group =======================================================
+its_div <- read.csv("glyphus_ITS_diversity_bdv2.csv", stringsAsFactors = FALSE)
+
+its_div <- its_div %>%
+  mutate(
+    expday = factor(FINAL.EXPERIMENT.DAY,
+                    levels = c("day-1-E1","day46-E1","day118-E1","day14-E2","day29-E2")),
+    # second Bd exposure flag (Yes only for E2 days AND treatments UV or V)
+    bd2 = if_else(expday %in% c("day14-E2","day29-E2") & Treatment %in% c("UV","V"),
+                  "Yes","No"),
+    # T3 grouping (untreated / mock-mock / mock-Bd / Bd-mock / Bd-Bd)
+    T3 = case_when(
+      Treatment == "UTA" ~ "untreated",
+      Treatment %in% c("UVC","UV") & bd2 == "No"  ~ "mock-mock",
+      Treatment %in% c("UVC","UV") & bd2 == "Yes" ~ "mock-Bd",
+      Treatment %in% c("VC","V")   & bd2 == "No"  ~ "Bd-mock",
+      Treatment %in% c("VC","V")   & bd2 == "Yes" ~ "Bd-Bd",
+      TRUE ~ NA_character_
+    ),
+    T3 = factor(T3, levels = c("untreated","mock-mock","mock-Bd","Bd-mock","Bd-Bd"))
+  )
+
+# quick sanity check (optional)
+its_div %>% count(expday, T3)
+
+# ===== 1) Output helpers =====================================================
+out_dir <- "outputs/its_streamlined"
+tab_dir <- file.path(out_dir, "tables")
+dir.create(tab_dir, recursive = TRUE, showWarnings = FALSE)
+
+wb <- if (requireNamespace("openxlsx", quietly = TRUE)) openxlsx::createWorkbook() else NULL
+add_sheet <- function(df, nm){
+  if (is.null(wb) || is.null(df) || nrow(df)==0) return()
+  nm <- substr(nm, 1, 31)
+  openxlsx::addWorksheet(wb, nm)
+  openxlsx::writeData(wb, nm, df)
+}
+write_csv_safe <- function(df, fn){
+  if (is.null(df) || nrow(df)==0) return(invisible(NULL))
+  readr::write_csv(df, file.path(tab_dir, fn))
+}
+
+to_df <- function(x, name = NULL){
+  if (is.null(x)) return(NULL)
+  df <- NULL
+  if (inherits(x, c("anova","adonis"))) {
+    df <- as.data.frame(x) %>% tibble::rownames_to_column("term")
+  } else if (inherits(x, "TukeyHSD") || is.list(x)) {
+    # TukeyHSD returns a list of matrices by term
+    pieces <- lapply(names(x), function(nm){
+      xi <- x[[nm]]
+      if (is.null(xi) || !is.matrix(xi)) return(NULL)
+      as.data.frame(xi) %>%
+        tibble::rownames_to_column("contrast") %>%
+        mutate(term = nm, .before = 1)
+    })
+    df <- bind_rows(pieces)
+  } else if (is.data.frame(x)) {
+    df <- x
+    if (!"contrast" %in% names(df) && !is.null(rownames(df)) && any(nchar(rownames(df))>0)) {
+      df <- df %>% tibble::rownames_to_column("contrast")
+    }
+  } else {
+    # try to coerce
+    df <- tryCatch({as.data.frame(x)}, error = function(e) NULL)
+  }
+  if (!is.null(df) && !is.null(name)) df$.source <- name
+  df
+}
+
+# ===== 2) Alpha diversity tests (per day, observed & shannon) ================
+alpha_metrics <- c("observed","diversity_shannon")
+days <- levels(its_div$expday)
+
+alpha_summary_rows <- list()
+
+for (dd in days) {
+  dsub <- its_div %>% filter(expday == dd) %>% drop_na(T3)
+  if (nrow(dsub) < 3) next
+
+  for (met in alpha_metrics) {
+    if (!met %in% names(dsub)) next
+    x <- dsub[[met]]
+    # Shapiro on raw + log10
+    sh_raw <- if (length(x) >= 3) shapiro.test(x) else list(p.value = NA_real_)
+    sh_log <- if (all(is.finite(log10(x + 1e-6))) && length(x) >= 3) shapiro.test(log10(x + 1e-6)) else list(p.value = NA_real_)
+    use_log <- is.finite(sh_raw$p.value) && is.finite(sh_log$p.value) && (sh_raw$p.value < 0.05 && sh_log$p.value >= 0.05)
+    val <- if (use_log) log10(x + 1e-6) else x
+
+    # Levene on chosen scale
+    lev <- tryCatch(car::leveneTest(val ~ dsub$T3),
+                    error = function(e) { data.frame(`Pr(>F)` = NA_real_) })
+    lev_p <- suppressWarnings(as.numeric(lev[1, "Pr(>F)"]))
+
+    # Choose ANOVA vs Kruskal + pairwise Wilcoxon (Bonferroni)
+    if (!is.na(shapiro.test(val)$p.value) && shapiro.test(val)$p.value >= 0.05 && !is.na(lev_p) && lev_p >= 0.05) {
+      fit <- aov(val ~ dsub$T3)
+      smry <- summary(fit)
+      tuk  <- TukeyHSD(fit)
+
+      smry_df <- to_df(smry, paste0("alpha_", dd, "_", met, "_anova"))
+      tuk_df  <- to_df(tuk,  paste0("alpha_", dd, "_", met, "_tukey"))
+      write_csv_safe(smry_df, paste0("alpha_", dd, "_", met, "_anova.csv"))
+      write_csv_safe(tuk_df,  paste0("alpha_", dd, "_", met, "_tukey.csv"))
+      add_sheet(smry_df, paste0("alpha_", dd, "_", met, "_anova"))
+      add_sheet(tuk_df,  paste0("alpha_", dd, "_", met, "_tukey"))
+
+      alpha_summary_rows[[length(alpha_summary_rows)+1]] <- tibble::tibble(
+        expday = dd, metric = met, transform = if (use_log) "log10" else "none",
+        shapiro_raw_p = sh_raw$p.value, shapiro_used_p = shapiro.test(val)$p.value,
+        levene_p = lev_p, test = "ANOVA+Tukey"
+      )
+    } else {
+      # Kruskal + pairwise Wilcoxon (Bonferroni)
+      kw <- kruskal.test(val ~ dsub$T3)
+      # pairwise.wilcox returns a matrix of adjusted p-values; tidy it
+      pw <- pairwise.wilcox.test(val, dsub$T3, p.adjust.method = "bonferroni")
+      pw_df <- NULL
+      if (!is.null(pw$p.value)) {
+        mat <- pw$p.value
+        pw_df <- as.data.frame(as.table(mat)) %>%
+          filter(!is.na(Freq)) %>%
+          rename(group1 = Var1, group2 = Var2, p_adj = Freq)
+      }
+
+      kw_df  <- to_df(kw,  paste0("alpha_", dd, "_", met, "_kruskal"))
+      write_csv_safe(kw_df,  paste0("alpha_", dd, "_", met, "_kruskal.csv"))
+      write_csv_safe(pw_df,  paste0("alpha_", dd, "_", met, "_pairwise_wilcoxon.csv"))
+      add_sheet(kw_df, paste0("alpha_", dd, "_", met, "_kruskal"))
+      add_sheet(pw_df, paste0("alpha_", dd, "_", met, "_wilcoxon"))
+
+      alpha_summary_rows[[length(alpha_summary_rows)+1]] <- tibble::tibble(
+        expday = dd, metric = met, transform = if (use_log) "log10" else "none",
+        shapiro_raw_p = sh_raw$p.value, shapiro_used_p = if (length(x)>=3) shapiro.test(val)$p.value else NA_real_,
+        levene_p = lev_p, test = "Kruskal+pairwise Wilcoxon"
+      )
+    }
+  }
+}
+
+alpha_summary <- dplyr::bind_rows(alpha_summary_rows)
+write_csv_safe(alpha_summary, "alpha_overview_summary.csv")
+add_sheet(alpha_summary, "alpha_overview")
+
+# ===== 3) Beta diversity by day: Bray PERMANOVA + pairwise + betadisper ======
+pairwise_dispatch <- function(d, group, p.adjust.m = "BH") {
+  if (requireNamespace("pairwiseAdonis", quietly = TRUE)) {
+    return(pairwiseAdonis::pairwise.adonis(d, factors = group, p.adjust.m = p.adjust.m))
+  } else if (exists("pairwise.adonis")) {
+    return(pairwise.adonis(d, factors = group, p.adjust.m = p.adjust.m))
+  } else {
+    warning("pairwiseAdonis not installed; skipping pairwise PERMANOVA."); return(NULL)
+  }
+}
+
+# ensure T3 exists in sample_data(fun.rar); derive if not present
+sdat <- as(sample_data(fun.rar), "data.frame")
+if (!"T3" %in% names(sdat)) {
+  sdat <- sdat %>%
+    mutate(
+      expday = FINAL.EXPERIMENT.DAY,
+      bd2 = if_else(expday %in% c("day14-E2","day29-E2") & Treatment %in% c("UV","V"), "Yes","No"),
+      T3 = case_when(
+        Treatment == "UTA" ~ "untreated",
+        Treatment %in% c("UVC","UV") & bd2 == "No"  ~ "mock-mock",
+        Treatment %in% c("UVC","UV") & bd2 == "Yes" ~ "mock-Bd",
+        Treatment %in% c("VC","V")   & bd2 == "No"  ~ "Bd-mock",
+        Treatment %in% c("VC","V")   & bd2 == "Yes" ~ "Bd-Bd",
+        TRUE ~ NA_character_
+      ),
+      T3 = factor(T3, levels = c("untreated","mock-mock","mock-Bd","Bd-mock","Bd-Bd"))
+    )
+  sample_data(fun.rar)$T3 <- sdat$T3[match(rownames(sample_data(fun.rar)), rownames(sdat))]
+}
+
+for (dd in days) {
+  ps_d <- subset_samples(fun.rar, FINAL.EXPERIMENT.DAY == dd)
+  if (nsamples(ps_d) < 3) next
+  df_d <- as(sample_data(ps_d), "data.frame")
+  if (!"T3" %in% names(df_d) || all(is.na(df_d$T3))) next
+
+  bray_d <- phyloseq::distance(ps_d, "bray")
+
+  # Global PERMANOVA & pairwise
+  a2 <- vegan::adonis2(bray_d ~ T3, data = df_d)
+  pw <- tryCatch(pairwise_dispatch(bray_d, df_d$T3), error = function(e) NULL)
+
+  write_csv_safe(to_df(a2), paste0("beta_bray_", dd, "_adonis2.csv"))
+  write_csv_safe(to_df(pw), paste0("beta_bray_", dd, "_pairwise.csv"))
+  add_sheet(to_df(a2), paste0("beta_bray_", dd, "_adonis2"))
+  add_sheet(to_df(pw), paste0("beta_bray_", dd, "_pairwise"))
+
+  # Dispersion check + Tukey
+  bd <- tryCatch(betadisper(bray_d, df_d$T3), error = function(e) NULL)
+  if (!is.null(bd)) {
+    bd_anova <- tryCatch(anova(bd), error = function(e) NULL)
+    bd_tukey <- tryCatch(TukeyHSD(bd), error = function(e) NULL)
+
+    write_csv_safe(to_df(bd_anova), paste0("beta_bray_", dd, "_betadisper_anova.csv"))
+    write_csv_safe(to_df(bd_tukey), paste0("beta_bray_", dd, "_betadisper_tukey.csv"))
+    add_sheet(to_df(bd_anova), paste0("beta_bray_", dd, "_bd_anova"))
+    add_sheet(to_df(bd_tukey), paste0("beta_bray_", dd, "_bd_tukey"))
+  }
+}
+
+# ===== 4) Save one Excel workbook (optional) =================================
+if (!is.null(wb)) {
+  xlsx_path <- file.path(out_dir, "its_all_results.xlsx")
+  openxlsx::saveWorkbook(wb, xlsx_path, overwrite = TRUE)
+  message("Excel written: ", xlsx_path)
+}
+
+message("Done. CSVs in: ", tab_dir)
+
+
+
+```
+
+```{r Linear models}
+
+# Linear mixed models for fungal diversity ----
+# Run models comparing alpha and diversity measures by T3s, Bd load
+
+
+# ---------- Output helpers ----------
+out_dir  <- "outputs/its_models_streamlined"
+tab_dir  <- file.path(out_dir, "tables")
+fig_dir  <- file.path(out_dir, "figs")
+dir.create(tab_dir, recursive = TRUE, showWarnings = FALSE)
+dir.create(fig_dir, recursive = TRUE, showWarnings = FALSE)
+
+wb <- if (requireNamespace("openxlsx", quietly = TRUE)) openxlsx::createWorkbook() else NULL
+add_sheet <- function(df, nm){
+  if (is.null(wb) || is.null(df) || nrow(df)==0) return()
+  nm <- substr(nm, 1, 31)
+  openxlsx::addWorksheet(wb, nm)
+  openxlsx::writeData(wb, nm, df)
+}
+write_csv_safe <- function(df, fn){
+  if (is.null(df) || nrow(df)==0) return(invisible(NULL))
+  readr::write_csv(df, file.path(tab_dir, fn))
+}
+
+to_df <- function(x, name=NULL){
+  if (is.null(x)) return(NULL)
+  df <- NULL
+  if (inherits(x, "lm")) {
+    df <- if (requireNamespace("broom", quietly = TRUE)) broom::tidy(x) else as.data.frame(coef(summary(x)))
+  } else if (inherits(x, "lmerMod") || inherits(x, "glmerMod")) {
+    if (requireNamespace("broom.mixed", quietly = TRUE)) {
+      df <- broom.mixed::tidy(x, effects = "fixed")
+    } else {
+      df <- as.data.frame(coef(summary(x)))
+    }
+  } else if (inherits(x, "anova") || inherits(x, "anova.lmerModLmerTest")) {
+    df <- as.data.frame(x) %>% tibble::rownames_to_column("term")
+  } else if (inherits(x, "emmGrid")) {
+    df <- as.data.frame(summary(x))
+  } else if (inherits(x, "emm_list")) {
+    df <- as.data.frame(x)
+  } else if (inherits(x, "pairs")) {
+    df <- as.data.frame(x)
+  } else if (is.data.frame(x)) {
+    df <- x
+    if (!"contrast" %in% names(df) && !is.null(rownames(df)) && any(nchar(rownames(df))>0)) {
+      df <- df %>% tibble::rownames_to_column("contrast")
+    }
+  } else {
+    df <- tryCatch(as.data.frame(x), error = function(e) NULL)
+  }
+  if (!is.null(df) && !is.null(name)) df$.source <- name
+  df
+}
+
+save_dharma <- function(model, fname_base) {
+  try({
+    sim <- DHARMa::simulateResiduals(model)
+    grDevices::png(filename = file.path(fig_dir, paste0(fname_base, "_DHARMa.png")),
+                   width = 1200, height = 900, res = 150)
+    plot(sim)
+    dev.off()
+  }, silent = TRUE)
+}
+
+# ---------- Data prep ----------
+# Keep only Experiment 2 (day14-E2, day29-E2); drop E1 days & the intermediate day118-E1
+div.df_exp2 <- its_div %>% filter(expday != "day-1-E1" & expday != "day46-E1")
+div.df_exp3 <- div.df_exp2 %>% filter(expday != "day118-E1")
+
+# Ensure grouping factor is properly ordered
+div.df_exp3 <- div.df_exp3 %>%
+  mutate(
+    T3     = factor(T3, levels = c("untreated", "mock-mock", "mock-Bd", "Bd-mock", "Bd-Bd")),
+    expday = factor(expday, levels = c("day14-E2", "day29-E2"))
+  )
+
+# Only rename if FrogID doesn't already exist
+if (!"FrogID" %in% names(div.df_exp3)) {
+  if ("FrogID.x" %in% names(div.df_exp3)) {
+    div.df_exp3 <- div.df_exp3 %>% dplyr::rename(FrogID = `FrogID.x`)
+  } else if ("FrogID.y" %in% names(div.df_exp3)) {
+    div.df_exp3 <- div.df_exp3 %>% dplyr::rename(FrogID = `FrogID.y`)
+  } else {
+    stop("No FrogID, FrogID.x, or FrogID.y column found in div.df_exp3")
+  }
+}
+
+# ---------- LMM: Richness (observed) ----------
+model_rich <- lmer(log10(observed + 1e-6) ~ expday * T3 + (1|FrogID), data = div.df_exp3)
+write_csv_safe(to_df(model_rich),                "lmm_richness_fixed_effects.csv")
+write_csv_safe(to_df(anova(model_rich)),         "lmm_richness_anova.csv")
+add_sheet(to_df(model_rich),  "lmm_richness_fixef")
+add_sheet(to_df(anova(model_rich)), "lmm_richness_anova")
+
+rich_em  <- emmeans(model_rich, ~ T3 * expday)
+rich_pw2 <- contrast(rich_em, "consec", simple = "each", combine = TRUE, adjust = "bonferroni")
+write_csv_safe(to_df(rich_em),                   "lmm_richness_emmeans.csv")
+write_csv_safe(to_df(rich_pw2),                  "lmm_richness_contrasts_consec_each.csv")
+add_sheet(to_df(rich_em),  "lmm_richness_emm")
+add_sheet(to_df(rich_pw2), "lmm_richness_consec")
+save_dharma(model_rich, "lmm_richness")
+
+# ---------- LMM: Shannon diversity ----------
+model_shan <- lmer(diversity_shannon ~ expday * T3 + (1|FrogID), data = div.df_exp3)
+write_csv_safe(to_df(model_shan),                "lmm_shannon_fixed_effects.csv")
+write_csv_safe(to_df(anova(model_shan)),         "lmm_shannon_anova.csv")
+add_sheet(to_df(model_shan),  "lmm_shannon_fixef")
+add_sheet(to_df(anova(model_shan)), "lmm_shannon_anova")
+
+shan_em  <- emmeans(model_shan, ~ T3 * expday)
+shan_pw1 <- contrast(shan_em, "consec", simple = "each", combine = TRUE, adjust = "bonferroni")
+write_csv_safe(to_df(shan_em),                   "lmm_shannon_emmeans.csv")
+write_csv_safe(to_df(shan_pw1),                  "lmm_shannon_contrasts_consec_each.csv")
+add_sheet(to_df(shan_em),  "lmm_shannon_emm")
+add_sheet(to_df(shan_pw1), "lmm_shannon_consec")
+save_dharma(model_shan, "lmm_shannon")
+
+# ---------- GLMM: distance from centroid ~ bdload + T3 (Gamma) ----------
+div_bd <- its_div %>% filter(bdload > 0) %>%
+  mutate(expday = if ("expday" %in% names(.)) expday else FINAL.EXPERIMENT.DAY)
+
+#model_bd1 <- glmer(distance_centroid ~ log10(bdload + 1) + T3 + (1|expday),
+#                   family = Gamma(link = "log"), data = div_bd)
+#write_csv_safe(to_df(model_bd1),                 "glmm_centroid_gamma_fixed_effects.csv")
+#write_csv_safe(to_df(anova(model_bd1)),          "glmm_centroid_gamma_anova.csv")
+#add_sheet(to_df(model_bd1),  "glmm_centroid_fixef")
+#add_sheet(to_df(anova(model_bd1)), "glmm_centroid_anova")#
+#
+#emm_bd1 <- emmeans(model_bd1, pairwise ~ T3, adjust = "bonferroni")
+#write_csv_safe(to_df(emm_bd1$emmeans),           "glmm_centroid_emmeans.csv")
+#write_csv_safe(to_df(emm_bd1$contrasts),         "glmm_centroid_pairs.csv")
+#add_sheet(to_df(emm_bd1$emmeans), "glmm_centroid_emm")
+#add_sheet(to_df(emm_bd1$contrasts), "glmm_centroid_pairs")
+#save_dharma(model_bd1, "glmm_centroid_gamma")
+
+# ---------- Day-specific composition models: Axis.1 ~ bdload + T3 ----------
+# Harmonize expday column in div_bd
+div_bd <- div_bd %>% mutate(expday = factor(expday, levels = c("day14-E2","day29-E2")))
+
+# Day 14 (LM)
+dat14bd <- div_bd %>% filter(expday == "day14-E2")
+if (nrow(dat14bd) >= 3) {
+  model_bd14 <- lm(Axis.1 ~ log10(bdload + 1) + T3, data = dat14bd)
+  write_csv_safe(to_df(model_bd14),              "lm_axis1_day14_summary.csv")
+  write_csv_safe(to_df(anova(model_bd14)),       "lm_axis1_day14_anova.csv")
+  emm_bd14 <- emmeans(model_bd14, pairwise ~ T3, adjust = "bonferroni")
+  write_csv_safe(to_df(emm_bd14$emmeans),        "lm_axis1_day14_emmeans.csv")
+  write_csv_safe(to_df(emm_bd14$contrasts),      "lm_axis1_day14_pairs.csv")
+  add_sheet(to_df(model_bd14),         "lm_axis1_d14_sum1")
+  add_sheet(to_df(anova(model_bd14)),  "lm_axis1_d14_anova1")
+  add_sheet(to_df(emm_bd14$emmeans),   "lm_axis1_d14_emm1")
+  add_sheet(to_df(emm_bd14$contrasts), "lm_axis1_d14_pairs1")
+  save_dharma(model_bd14, "lm_axis1_day14")
+}
+
+# Day 29 (GLM gaussian; you can swap to Gamma/link if needed)
+dat29bd <- div_bd %>% filter(expday == "day29-E2")
+if (nrow(dat29bd) >= 3) {
+  model_bd29 <- glm(Axis.1 ~ log10(bdload + 1) + T3, data = dat29bd)
+  write_csv_safe(to_df(model_bd29),              "glm_axis1_day29_summary.csv")
+  write_csv_safe(to_df(anova(model_bd29)),       "glm_axis1_day29_anova.csv")
+  emm_bd29 <- emmeans(model_bd29, pairwise ~ T3, adjust = "bonferroni")
+  write_csv_safe(to_df(emm_bd29$emmeans),        "glm_axis1_day29_emmeans.csv")
+  write_csv_safe(to_df(emm_bd29$contrasts),      "glm_axis1_day29_pairs.csv")
+  add_sheet(to_df(model_bd29),         "glm_axis1_d29_sum")
+  add_sheet(to_df(anova(model_bd29)),  "glm_axis1_d29_anova")
+  add_sheet(to_df(emm_bd29$emmeans),   "glm_axis1_d29_emm")
+  add_sheet(to_df(emm_bd29$contrasts), "glm_axis1_d29_pairs")
+  save_dharma(model_bd29, "glm_axis1_day29")
+}
+
+# ---------- LMM: observed ~ bdload + T3 + (1|day) ----------
+model_bd2 <- lmer(observed ~ log10(bdload + 1) + T3 + (1|expday), data = div_bd)
+write_csv_safe(to_df(model_bd2),                 "lmm_richness_bdload_fixed_effects.csv")
+write_csv_safe(to_df(anova(model_bd2)),          "lmm_richness_bdload_anova.csv")
+add_sheet(to_df(model_bd2),  "lmm_richness_bd_fixef")
+add_sheet(to_df(anova(model_bd2)), "lmm_richness_bd_anova")
+save_dharma(model_bd2, "lmm_richness_bdload")
+
+# ---------- Mantel tests: Bray vs Bd-load distance at Day 14/29 ----------
+mantel_export <- function(ps_day, df_div, day_lab, id_col = "SampleID") {
+  if (nsamples(ps_day) < 3) return(NULL)
+  # ensure df_div has an ID column matching sample_names(ps_day)
+  if (!(id_col %in% names(df_div))) df_div[[id_col]] <- rownames(df_div)
+  ids <- sample_names(ps_day)
+
+  df_day <- df_div %>%
+    filter(expday == day_lab, bdload > 0, .data[[id_col]] %in% ids) %>%
+    arrange(match(.data[[id_col]], ids))
+
+  ps_sub <- prune_samples(df_day[[id_col]], ps_day)
+  if (nsamples(ps_sub) < 3 || nrow(df_day) < 3) return(NULL)
+
+  bray <- phyloseq::distance(ps_sub, "bray")
+  bd_d <- dist(log10(df_day$bdload + 1), method = "euclidean")
+
+  mt <- vegan::mantel(bray, bd_d, method = "spearman", permutations = 10000)
+  df_out <- data.frame(
+    day = day_lab, method = "spearman",
+    statistic = unname(mt$statistic), p_value = unname(mt$signif),
+    permutations = mt$permutations, stringsAsFactors = FALSE
+  )
+  write_csv_safe(df_out, paste0("mantel_bray_bdload_", day_lab, ".csv"))
+  add_sheet(df_out, paste0("mantel_", day_lab))
+  df_out
+}
+
+ps_bd <- subset_samples(fun.rar, bdload > 0)
+m14 <- mantel_export(subset_samples(ps_bd, FINAL.EXPERIMENT.DAY == "day14-E2"),
+                     div_bd, "day14-E2")
+m29 <- mantel_export(subset_samples(ps_bd, FINAL.EXPERIMENT.DAY == "day29-E2"),
+                     div_bd, "day29-E2")
+
+# ---------- Plot: distance to centroid vs bdload ----------
+#p <- ggplot(div_bd, aes(x = log10(bdload + 1), y = distance_centroid, colour = T3)) +
+#  geom_point(alpha = 0.6) +
+#  geom_smooth(method = "lm", se = TRUE) +
+#  theme_minimal(base_size = 12) +
+#  labs(x = "log10(Bd load + 1)", y = "Distance to centroid (Bray)", colour = "T3")
+#ggplot2::ggsave(filename = file.path(fig_dir, "centroid_vs_bdload.png"),
+#                plot = p, width = 7, height = 5, dpi = 300)
+
+# ---------- Save workbook ----------
+if (!is.null(wb)) {
+  openxlsx::saveWorkbook(wb, file.path(out_dir, "its_models_results.xlsx"), overwrite = TRUE)
+  message("Excel written: ", file.path(out_dir, "its_models_results.xlsx"))
+}
+message("Done. Tables in: ", tab_dir, " | Figures in: ", fig_dir)
+
+
+
+
+```
+
+```{r  figures}
+
+
+# ====================== Shared aesthetics & helpers ============================
+suppressPackageStartupMessages({
+  library(dplyr); library(ggplot2); library(patchwork); library(grid)
+  suppressWarnings(try(library(ggnewscale), silent = TRUE))
+  suppressWarnings(try(library(ggpubr),    silent = TRUE))
+})
+
+T3_levels <- c("untreated","mock-mock","mock-Bd","Bd-mock","Bd-Bd")
+cols_T3   <- c("untreated"="#5b859e","mock-mock"="#b38711",
+               "mock-Bd"="#b38711","Bd-mock"="#732f30","Bd-Bd"="#732f30")
+shps_T3   <- c("untreated"=21,"mock-mock"=21,"mock-Bd"=24,"Bd-mock"=21,"Bd-Bd"=24)
+lines_T3  <- c("untreated"="solid","mock-mock"="solid",
+               "mock-Bd"="dashed","Bd-mock"="solid","Bd-Bd"="dashed")
+
+darken_color <- function(color, factor = 0.3) {
+  x <- col2rgb(color)/255; rgb(x[1]*(1-factor), x[2]*(1-factor), x[3]*(1-factor))
+}
+cols_T3_darker <- vapply(cols_T3, darken_color, "", factor = 0.35)
+
+# Build TP-specific scales: TP1 = white fill; TP2 = colored fill (outline by T3 color)
+build_tp_scales <- function(cols_base, shps_base, lines_base) {
+  grid <- expand.grid(group = names(cols_base), tp = c("TP1","TP2"), KEEP.OUT.ATTRS = FALSE)
+  grid$T3_tp <- paste(grid$group, grid$tp, sep = ": ")
+  list(
+    colors_tp    = setNames(cols_base[grid$group], grid$T3_tp),
+    shapes_tp    = setNames(shps_base[grid$group], grid$T3_tp),
+    linetypes_tp = setNames(lines_base[grid$group], grid$T3_tp),
+    fills_tp     = setNames(ifelse(grid$tp=="TP2", cols_base[grid$group], "white"), grid$T3_tp)
+  )
+}
+tp_scales <- build_tp_scales(cols_T3, shps_T3, lines_T3)
+
+# One-liner PCoA builder (Bray) with T3-only styling
+make_pcoa <- function(df, day, title, xlab, ylab, show_legend = FALSE) {
+  df %>% filter(expday == day) %>%
+    ggplot(aes(Axis.1, Axis.2)) +
+    stat_ellipse(aes(group = T3, color = T3, linetype = T3),
+                 linewidth = 1.25, level = 0.95, alpha = 0.7, show.legend = show_legend) +
+    geom_point(aes(shape = T3, fill = T3, color = T3),
+               size = 4, stroke = 1.1, alpha = 0.75, show.legend = show_legend) +
+    scale_fill_manual(values = cols_T3,   name = "Treatment", drop = FALSE) +
+    scale_color_manual(values = cols_T3,  name = "Treatment", drop = FALSE) +
+    scale_shape_manual(values = shps_T3,  name = "Treatment", drop = FALSE) +
+    scale_linetype_manual(values = lines_T3, name = "Treatment", drop = FALSE) +
+    labs(title = title, x = xlab, y = ylab) +
+    theme_bw() +
+    theme(axis.text = element_text(size = 12),
+          axis.title = element_text(size = 14),
+          plot.title = element_text(size = 16, hjust = 0.5),
+          legend.position = if (show_legend) "right" else "none",
+          strip.background = element_blank(),
+          strip.text = element_text(size = 14))
+}
+
+# ====================== Data prep (E2 + T3/TP factors) ========================
+its_div3 <- its_div %>%
+  filter(expday != "day-1-E1", expday != "day46-E1") %>%
+  mutate(
+    timepoint = case_when(
+      expday == "day14-E2" ~ "TP1",
+      expday == "day29-E2" ~ "TP2",
+      TRUE                 ~ "TP0"
+    ),
+    T3    = factor(T3, levels = T3_levels),
+    T3_tp = factor(paste(T3, timepoint, sep = ": "),
+                   levels = c("Bd-Bd: TP1","Bd-Bd: TP2",
+                              "Bd-mock: TP1","Bd-mock: TP2",
+                              "mock-Bd: TP1","mock-Bd: TP2",
+                              "mock-mock: TP1","mock-mock: TP2",
+                              "untreated: TP1","untreated: TP2"))
+  )
+
+# ====================== ITS Richness (TP0, TP1, TP2) ==========================
+its_div5 <- its_div %>%
+  filter(expday %in% c("day118-E1","day14-E2","day29-E2")) %>%
+  mutate(T3 = factor(T3, levels = T3_levels),
+         expday = factor(expday, levels = c("day118-E1","day14-E2","day29-E2")))
+
+itsplot_rich <- ggplot(its_div5, aes(expday, observed)) +
+  geom_boxplot(aes(fill = T3),
+               color = "black", alpha = 0.75,
+               outlier.shape = NA, size = 0.25,
+               position = position_dodge2(width = 0.75)) +
+  geom_point(aes(fill = T3, shape = T3, color = T3),
+             position = position_jitterdodge(jitter.width = 0.06, dodge.width = 0.75),
+             size = 4, alpha = 0.9, stroke = 1.0) +
+  scale_fill_manual(values = cols_T3,  name = "Treatment") +
+  scale_color_manual(values = cols_T3, name = "Treatment") +
+  scale_shape_manual(values = shps_T3, name = "Treatment") +
+  scale_x_discrete(labels = c("day118-E1"="Day 90 post itraconazole",
+                              "day14-E2" ="Day 14 post second Bd exposure",
+                              "day29-E2" ="Day 29 post second Bd exposure")) +
+  labs(y = "Fungal ASV richness", x = "") +
+  theme_bw() +
+  theme(text = element_text(size = 18),
+        axis.text.x = element_text(size = 14),
+        legend.position = "none")
+
+if (requireNamespace("ggpubr", quietly = TRUE)) {
+  itsplot_rich <- itsplot_rich +
+    ggpubr::geom_bracket(xmin = 2, xmax = 3, y.position = max(its_div5$observed, na.rm = TRUE)*0.95,
+                         label = "**", label.size = 6, inherit.aes = FALSE, tip.length = 0.02)
+}
+
+# ====================== ITS PCoA panels (E2 + TP0) ============================
+itsplot3 <- make_pcoa(its_div, "day118-E1", "Day 90 post itraconazole",
+                      "Axis 1 (39.4%)", "Axis 2 (25.0%)", show_legend = FALSE)
+
+itsplot4 <- make_pcoa(its_div, "day14-E2", "Day 14 post second Bd exposure",
+                      "Axis 1 (60%)", "Axis 2 (8%)", show_legend = FALSE)
+
+itsplot5 <- make_pcoa(its_div, "day29-E2", "Day 29 post second Bd exposure",
+                      "Axis 1 (41.9%)", "Axis 2 (17.0%)", show_legend = TRUE) +
+  guides(
+    fill    = guide_legend(override.aes = list(size = 6)),
+    linetype= guide_legend(override.aes = list(size = 0.1, color = cols_T3_darker))
+  )
+
+# ====================== Composite (Exp2 + TP0) ================================
+exp2_compits <- (itsplot3 | itsplot4 | itsplot5) /
+                itsplot_rich +
+  plot_layout(guides = "collect") +
+  plot_annotation(tag_levels = list(c("A","B","C","D"))) &
+  theme(plot.tag = element_text(size = 18),
+        legend.key.size = unit(0.5, "cm"),
+        text = element_text(size = 16))
+
+ggsave("ITS_supp_fig.pdf", plot = exp2_compits,
+       units = "in", width = 16, height = 14, dpi = 300)
+
+exp2_compits # Check it
+# ====================== Day 29 PCoA with outlier view =========================
+day29_plot_outliers <- make_pcoa(its_div, "day29-E2",
+                                 "Day 29 post second Bd exposure",
+                                 "Axis 1 (41.9%)","Axis 2 (17.0%)",
+                                 show_legend = TRUE) +
+  coord_cartesian(xlim = c(NA, 0.25), ylim = c(NA, 0.2)) +
+  guides(fill    = guide_legend(override.aes = list(size = 6)),
+         linetype= guide_legend(override.aes = list(size = 0.1, color = cols_T3_darker)))
+
+ggsave("ITS_PCA_day29_outliers.pdf", plot = day29_plot_outliers,
+       units = "in", width = 5, height = 4, dpi = 300)
+
+day29_plot_outliers
+
+# --- Setup (once) --------------------------------------------------------------
+suppressPackageStartupMessages({
+  library(dplyr); library(ggplot2); library(patchwork)
+  suppressWarnings(try(library(ggpubr), silent = TRUE))  # for geom_bracket
+})
+
+# First-treatment colors (UTA, Bd-naive, Bd-exposed)
+cols_first <- c(UTA = "#5b859e", Bd_naive = "#b38711", Bd_exposed = "#732f30")
+shape_second <- c(No = 16, Yes = 17)  # second Bd exposure: No=mock, Yes=Bd
+shape_second_labels <- c(No = "mock", Yes = "Bd")
+
+# --- Factors & tidy columns ----------------------------------------------------
+div.df3 <- div.df_exp2 %>%
+  mutate(
+    expday   = factor(expday, levels = c("day118-E1","day14-E2","day29-E2")),
+    # First Bd treatment as ordered factor (used for color/fill)
+    T2_base  = factor(T2, levels = c("UTA","Bd_naive","Bd_exposed")),
+    # Second Bd exposure (No/Yes) as ordered factor (used for shape)
+    bd2      = factor(bd2, levels = c("No","Yes")),
+    # Combined display factor if you still want it
+    T2       = factor(paste(bd2, T2_base),
+                      levels = c("No UTA","Yes Bd_naive","No Bd_naive","No Bd_exposed","Yes Bd_exposed")),
+    # Pretty labels for first Bd treatment legend
+    first_lbl = dplyr::recode(T2_base, UTA = "Untreated", Bd_naive = "mock", Bd_exposed = "Bd")
+  )
+
+# ===================== Richness plot (Day 118, 14, 29) =========================
+itsplot_rich <- ggplot(div.df3, aes(x = expday, y = observed)) +
+  # boxes colored by FIRST treatment
+  geom_boxplot(aes(fill = T2_base),
+               color = "black", alpha = 0.75,
+               outlier.shape = NA, size = 0.25,
+               position = position_dodge2(width = 0.75)) +
+  # points: color by FIRST treatment, shape by SECOND exposure (mock/Bd)
+  geom_point(aes(color = T2_base, shape = bd2),
+             position = position_dodge(0.75, preserve = "total"),
+             alpha = 0.9, size = 4, stroke = 0.4) +
+  scale_fill_manual(values = cols_first, breaks = names(cols_first),
+                    labels = c("Untreated","mock","Bd"), name = "First Bd treatment") +
+  scale_color_manual(values = cols_first, breaks = names(cols_first),
+                     labels = c("Untreated","mock","Bd"), name = "First Bd treatment") +
+  scale_shape_manual(values = shape_second, breaks = names(shape_second),
+                     labels = shape_second_labels, name = "Second Bd exposure") +
+  scale_x_discrete(labels = c("day118-E1" = "Day pre-Bd",
+                              "day14-E2"  = "Day 14",
+                              "day29-E2"  = "Day 29")) +
+  scale_y_continuous(limits = c(0, 60), breaks = seq(0, 60, 10)) +
+  labs(y = "Observed fungal ASVs", x = NULL) +
+  theme_bw() +
+  theme(text = element_text(size = 18, color = "black"),
+        axis.text.x = element_text(size = 12, color = "black"),
+        strip.background = element_blank(),
+        panel.grid.major.x = element_blank(),
+        axis.ticks.y = element_blank())
+
+# Optional bracket (needs ggpubr); remove if not desired
+if (requireNamespace("ggpubr", quietly = TRUE)) {
+  itsplot_rich <- itsplot_rich +
+    ggpubr::geom_bracket(
+      xmin = 2.01, xmax = 3, y.position = 58.3,
+      label = "**", label.size = 6, inherit.aes = FALSE, tip.length = 0.025
+    )
+}
+
+ggsave("glyphusITS_sdrich.tiff", plot = itsplot_rich,
+       units = "in", width = 14, height = 8, dpi = 300, compression = "lzw")
+
+# ===================== Bray–Curtis PCoA panels ================================
+# Helper to make a Bray PCoA panel with clean styling
+make_bray_pcoa <- function(ps, color_var, pal, title, xlab, ylab, show_legend = TRUE) {
+  ord <- phyloseq::ordinate(ps, method = "PCoA", distance = "bray")
+  p <- phyloseq::plot_ordination(ps, ord, color = color_var) +
+    stat_ellipse(aes(group = .data[[color_var]], color = .data[[color_var]]),
+                 linetype = 1, linewidth = 1, level = 0.95, alpha = 0.7) +
+    geom_point(size = 4, alpha = 0.75) +
+    theme_classic(base_size = 18) +
+    theme(legend.position = if (show_legend) "right" else "none") +
+    labs(title = title, x = xlab, y = ylab) +
+    scale_color_manual(values = pal)
+  p
+}
+
+# Day 0 (pre-second exposure) — color by T2 (if present)
+# (Adjust labels/palette to match the levels present in your its_0 sample_data)
+# p_bray0 <- make_bray_pcoa(its_0, "T2",
+#                           pal = c("UTA" = "#5b859e", "Bd_naive" = "#b38711"),
+#                           title = "Day 0 (pre-second exposure)",
+#                           xlab = "Axis 1", ylab = "Axis 2", show_legend = TRUE)
+
+# Day 118 (uses TreatmentD118 in your snippet)
+bray118 <- make_bray_pcoa(
+  its_118, "TreatmentD118",
+  pal   = c("UTA" = "#5b859e", "UVC+UV" = "#b38711", "VC+V" = "#732f30"),
+  title = "Day 118 (pre-second exposure)",
+  xlab  = "Axis 1 (39.4%)", ylab = "Axis 2 (25.0%)",
+  show_legend = FALSE
+)
+
+ggsave("glyphusITS_bray118.tiff", plot = bray118,
+       units = "in", width = 7, height = 4, dpi = 300, compression = "lzw")
+
+# ===================== Combo figure (PCoA118 + richness) ======================
+its__combined <- bray118 / itsplot_rich +
+  plot_layout(ncol = 2, widths = c(1, 3), guides = "collect") +
+  plot_annotation(tag_levels = list(c("A","B"))) &
+  theme(plot.tag = element_text(size = 18))
+
+its__combined
+ggsave("glyphusITS_combo.tiff", plot = its__combined,
+       units = "in", width = 14, height = 8, dpi = 300, compression = "lzw")
+
+
+```
+
