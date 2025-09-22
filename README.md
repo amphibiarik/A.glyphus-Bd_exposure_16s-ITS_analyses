@@ -36,9 +36,9 @@ Strategies to improve survival of wildlife impacted by emerging infectious disea
 
 ## Code for analyses and generating figures
 
->(3.1) **glyphus16s_analyses_figures.RMD** Complete and annotated R Markdown file for all bacterial 16s analyses and figures.
+>(3.1) **A_glyphus16s_analyses_figures.RMD** Complete and annotated R Markdown file for all bacterial 16s analyses and figures.
 
->(3.2) **glyphusITS_analyses_figures.RMD** Complete and annotated R Markdown file for all fungal ITS analyses and figures.
+>(3.2) **A_glyphusITS_analyses_figures.RMD** Complete and annotated R Markdown file for all fungal ITS analyses and figures.
 
 
 
