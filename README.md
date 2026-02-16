@@ -34,11 +34,19 @@ Strategies to improve survival of wildlife impacted by emerging infectious disea
 
 >(2.6) **""glyphus_ITS_diversity_bd.csv"** Optional csv containing full sample metdata with ITS alpha and beta diversity metrics calculated from phyloseq.
 
+3. Bd loads and Survivorship:
+>(3.1) **bdloads.csv** Csv containing Bd load, survival, and morphometric data for treatments across experiment.
+
+>(3.2) **S1_Survivorshup_Bd_load.csv** Csv of survivorship and full host metadata for vaccine analyses.
+
+
 ## Code for analyses and generating figures
 
->(3.1) **A_glyphus16s_analyses_figures.RMD** Complete and annotated R Markdown file for all bacterial 16s analyses and figures.
+>(4.1) **A_glyphus16s_analyses_figures.RMD** Complete and annotated R Markdown file for all bacterial 16s analyses and figures.
 
->(3.2) **A_glyphusITS_analyses_figures.RMD** Complete and annotated R Markdown file for all fungal ITS analyses and figures.
+>(4.2) **A_glyphusITS_analyses_figures.RMD** Complete and annotated R Markdown file for all fungal ITS analyses and figures.
+
+>(4.3) **glyphusvaccine.RMD** Complete and annotated R Markdown file for post-exposure survival and Bd load analyses.
 
 
 
