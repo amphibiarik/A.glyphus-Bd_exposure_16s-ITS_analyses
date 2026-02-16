@@ -1,0 +1,361 @@
+﻿treatment,no,daydeath,vaccinationload31may,logvaccineload,weight11sept,logBdload,day 
+Unvaccinated,1,32,0,0,5.414,0,0
+Unvaccinated,2,30,0,0,3.502,0,0
+Unvaccinated,3,27,0,0,6.2,0,0
+Unvaccinated,4,51,0,0,6.568,0,0
+Unvaccinated,5,31,0,0,6.521,0,0
+Unvaccinated,6,31,0,0,7.278,0,0
+Unvaccinated,7,33,0,0,6.094,0,0
+Unvaccinated,8,38,0,0,5.412,0,0
+Unvaccinated,9,30,0,0,6.22,0,0
+Unvaccinated,10,74,0,0,2.736,0,0
+Unvaccinated,11,48,0,0,3.075,0,0
+Unvaccinated,12,38,0,0,5.955,0,0
+Unvaccinated,13,37,0,0,6.774,0,0
+Unvaccinated,14,32,0,0,6.895,0,0
+Unvaccinated,15,50,0,0,3.853,0,0
+Unvaccinated,16,29,0,0,6.374,0,0
+Unvaccinated,17,32,0,0,6.714,0,0
+Unvaccinated,18,37,0,0,5.865,0,0
+Unvaccinated,19,45,0,0,5.653,0,0
+Unvaccinated,20,39,0,0,3.616,0,0
+Unvaccinated control,21,,0,0,5.955,0,0
+Unvaccinated control,22,,0,0,6.712,0,0
+Unvaccinated control,23,,0,0,3.658,0,0
+Unvaccinated control,24,,0,0,6.315,0,0
+Unvaccinated control,25,,0,0,6.999,0,0
+Unvaccinated control,26,,0,0,6.722,0,0
+Unvaccinated control,27,,0,0,7.097,0,0
+Unvaccinated control,28,,0,0,6.194,0,0
+Unvaccinated control,29,,0,0,3.958,0,0
+Unvaccinated control,30,,0,0,7.348,0,0
+Vaccinated,41,27,"12,540",4.1,5.675,0,0
+Vaccinated,42,29,"2,971",3.47,7.216,0,0
+Vaccinated,44,55,"3,107",3.49,2.913,0,0
+Vaccinated,45,28,"6,741",3.83,5.296,0,0
+Vaccinated,46,39,811,2.91,3.544,0,0
+Vaccinated,47,28,"21,940",4.34,5.398,0,0
+Vaccinated,48,31,"2,076",3.32,5.666,0,0
+Vaccinated,49,30,"10,030",4,6.9,0,0
+Vaccinated,50,51,"7,269",3.86,3.285,0,0
+Vaccinated,51,30,"2,782",3.44,6.32,0,0
+Vaccinated,52,29,"6,917",3.84,6.287,0,0
+Vaccinated,53,30,"9,930",4,5.837,0,0
+Vaccinated,54,81,280,2.45,3.172,0,0
+Vaccinated,55,34,660,2.82,5.67,0,0
+Vaccinated,56,30,"8,217",3.91,5.611,0,0
+Vaccinated,57,31,"2,459",3.39,6.14,0,0
+Vaccinated,58,35,284,2.45,3.201,0,0
+Vaccinated,59,31,"1,789",3.25,6.392,0,0
+Vaccinated,60,76,789,2.9,2.998,0,0
+Vaccinated,72,32,"6,142",3.79,5.113,0,0
+Vaccinated control,61,,664,2.82,6.596,0,0
+Vaccinated control,62,,310,2.49,2.611,0,0
+Vaccinated control,63,,"3,040",3.48,5.508,0,0
+Vaccinated control,64,,198,2.3,5.342,0,0
+Vaccinated control,65,,"17,460",4.24,6.42,0,0
+Vaccinated control,66,,"1,437",3.16,6.799,0,0
+Vaccinated control,67,,541,2.73,6.945,0,0
+Vaccinated control,69,,"10,970",4.04,6.233,0,0
+Vaccinated control,70,,"11,230",4.05,3.272,0,0
+Vaccinated control,71,,"4,771",3.68,3.714,0,0
+Unvaccinated,1,32,0,0,5.414,4.03,14
+Unvaccinated,2,30,0,0,3.502,3.95,14
+Unvaccinated,3,27,0,0,6.2,4.38,14
+Unvaccinated,4,51,0,0,6.568,2.5,14
+Unvaccinated,5,31,0,0,6.521,4.48,14
+Unvaccinated,6,31,0,0,7.278,4.93,14
+Unvaccinated,7,33,0,0,6.094,2.97,14
+Unvaccinated,8,38,0,0,5.412,3.01,14
+Unvaccinated,9,30,0,0,6.22,2.58,14
+Unvaccinated,10,74,0,0,2.736,0,14
+Unvaccinated,11,48,0,0,3.075,0,14
+Unvaccinated,12,38,0,0,5.955,3.64,14
+Unvaccinated,13,37,0,0,6.774,2.6,14
+Unvaccinated,14,32,0,0,6.895,3.51,14
+Unvaccinated,15,50,0,0,3.853,1.11,14
+Unvaccinated,16,29,0,0,6.374,4.19,14
+Unvaccinated,17,32,0,0,6.714,3.88,14
+Unvaccinated,18,37,0,0,5.865,3.51,14
+Unvaccinated,19,45,0,0,5.653,1.4,14
+Unvaccinated,20,39,0,0,3.616,2.78,14
+Unvaccinated control,21,,0,0,5.955,0,14
+Unvaccinated control,22,,0,0,6.712,0,14
+Unvaccinated control,23,,0,0,3.658,0,14
+Unvaccinated control,24,,0,0,6.315,0,14
+Unvaccinated control,25,,0,0,6.999,0,14
+Unvaccinated control,26,,0,0,6.722,0,14
+Unvaccinated control,27,,0,0,7.097,0,14
+Unvaccinated control,28,,0,0,6.194,0,14
+Unvaccinated control,29,,0,0,3.958,0,14
+Unvaccinated control,30,,0,0,7.348,0,14
+Vaccinated,41,27,"12,540",4.1,5.675,5.19,14
+Vaccinated,42,29,"2,971",3.47,7.216,4.42,14
+Vaccinated,44,55,"3,107",3.49,2.913,2.57,14
+Vaccinated,45,28,"6,741",3.83,5.296,4.58,14
+Vaccinated,46,39,811,2.91,3.544,3.77,14
+Vaccinated,47,28,"21,940",4.34,5.398,5.28,14
+Vaccinated,48,31,"2,076",3.32,5.666,4.43,14
+Vaccinated,49,30,"10,030",4,6.9,3.98,14
+Vaccinated,50,51,"7,269",3.86,3.285,1.67,14
+Vaccinated,51,30,"2,782",3.44,6.32,3.77,14
+Vaccinated,52,29,"6,917",3.84,6.287,4.32,14
+Vaccinated,53,30,"9,930",4,5.837,4.85,14
+Vaccinated,54,81,280,2.45,3.172,1.36,14
+Vaccinated,55,34,660,2.82,5.67,3.44,14
+Vaccinated,56,30,"8,217",3.91,5.611,4.15,14
+Vaccinated,57,31,"2,459",3.39,6.14,4.18,14
+Vaccinated,58,35,284,2.45,3.201,4.09,14
+Vaccinated,59,31,"1,789",3.25,6.392,3.51,14
+Vaccinated,60,76,789,2.9,2.998,1.26,14
+Vaccinated,72,32,"6,142",3.79,5.113,3.88,14
+Vaccinated control,61,,664,2.82,6.596,0,14
+Vaccinated control,62,,310,2.49,2.611,0,14
+Vaccinated control,63,,"3,040",3.48,5.508,0,14
+Vaccinated control,64,,198,2.3,5.342,0,14
+Vaccinated control,65,,"17,460",4.24,6.42,0,14
+Vaccinated control,66,,"1,437",3.16,6.799,0,14
+Vaccinated control,67,,541,2.73,6.945,0,14
+Vaccinated control,69,,"10,970",4.04,6.233,0,14
+Vaccinated control,70,,"11,230",4.05,3.272,0,14
+Vaccinated control,71,,"4,771",3.68,3.714,0,14
+Unvaccinated,1,32,0,0,5.414,4.96,35
+Unvaccinated,2,30,0,0,3.502,4.65,35
+Unvaccinated,3,27,0,0,6.2,5.85,35
+Unvaccinated,4,51,0,0,6.568,3.9,35
+Unvaccinated,5,31,0,0,6.521,5.15,35
+Unvaccinated,6,31,0,0,7.278,4.92,35
+Unvaccinated,7,33,0,0,6.094,4.64,35
+Unvaccinated,8,38,0,0,5.412,3.61,35
+Unvaccinated,9,30,0,0,6.22,5.69,35
+Unvaccinated,10,74,0,0,2.736,1.69,35
+Unvaccinated,11,48,0,0,3.075,3.31,35
+Unvaccinated,12,38,0,0,5.955,5.1,35
+Unvaccinated,13,37,0,0,6.774,5.72,35
+Unvaccinated,14,32,0,0,6.895,4.82,35
+Unvaccinated,15,50,0,0,3.853,3.33,35
+Unvaccinated,16,29,0,0,6.374,5.3,35
+Unvaccinated,17,32,0,0,6.714,4.48,35
+Unvaccinated,18,37,0,0,5.865,4.89,35
+Unvaccinated,19,45,0,0,5.653,3.28,35
+Unvaccinated,20,39,0,0,3.616,3.22,35
+Unvaccinated control,21,,0,0,5.955,0,35
+Unvaccinated control,22,,0,0,6.712,0,35
+Unvaccinated control,23,,0,0,3.658,0,35
+Unvaccinated control,24,,0,0,6.315,0,35
+Unvaccinated control,25,,0,0,6.999,0,35
+Unvaccinated control,26,,0,0,6.722,0,35
+Unvaccinated control,27,,0,0,7.097,0,35
+Unvaccinated control,28,,0,0,6.194,0,35
+Unvaccinated control,29,,0,0,3.958,0,35
+Unvaccinated control,30,,0,0,7.348,0,35
+Vaccinated,41,27,"12,540",4.1,5.675,5.68,35
+Vaccinated,42,29,"2,971",3.47,7.216,4.68,35
+Vaccinated,44,55,"3,107",3.49,2.913,3.27,35
+Vaccinated,45,28,"6,741",3.83,5.296,4.75,35
+Vaccinated,46,39,811,2.91,3.544,4.41,35
+Vaccinated,47,28,"21,940",4.34,5.398,6.36,35
+Vaccinated,48,31,"2,076",3.32,5.666,5.34,35
+Vaccinated,49,30,"10,030",4,6.9,5.77,35
+Vaccinated,50,51,"7,269",3.86,3.285,2.83,35
+Vaccinated,51,30,"2,782",3.44,6.32,5.48,35
+Vaccinated,52,29,"6,917",3.84,6.287,4.2,35
+Vaccinated,53,30,"9,930",4,5.837,5.02,35
+Vaccinated,54,81,280,2.45,3.172,2.94,35
+Vaccinated,55,34,660,2.82,5.67,4.39,35
+Vaccinated,56,30,"8,217",3.91,5.611,5.02,35
+Vaccinated,57,31,"2,459",3.39,6.14,5.62,35
+Vaccinated,58,35,284,2.45,3.201,4.32,35
+Vaccinated,59,31,"1,789",3.25,6.392,4.41,35
+Vaccinated,60,76,789,2.9,2.998,1.18,35
+Vaccinated,72,32,"6,142",3.79,5.113,4.43,35
+Vaccinated control,61,,664,2.82,6.596,0,35
+Vaccinated control,62,,310,2.49,2.611,0,35
+Vaccinated control,63,,"3,040",3.48,5.508,0,35
+Vaccinated control,64,,198,2.3,5.342,0,35
+Vaccinated control,65,,"17,460",4.24,6.42,0,35
+Vaccinated control,66,,"1,437",3.16,6.799,0,35
+Vaccinated control,67,,541,2.73,6.945,0,35
+Vaccinated control,69,,"10,970",4.04,6.233,0,35
+Vaccinated control,70,,"11,230",4.05,3.272,0,35
+Vaccinated control,71,,"4,771",3.68,3.714,0,35
+Unvaccinated,1,32,0,0,5.414,4.66,43
+Unvaccinated,2,30,0,0,3.502,5.02,43
+Unvaccinated,3,27,0,0,6.2,,43
+Unvaccinated,4,51,0,0,6.568,4.54,43
+Unvaccinated,5,31,0,0,6.521,4.42,43
+Unvaccinated,6,31,0,0,7.278,6.15,43
+Unvaccinated,7,33,0,0,6.094,5.87,43
+Unvaccinated,8,38,0,0,5.412,4.96,43
+Unvaccinated,9,30,0,0,6.22,6.33,43
+Unvaccinated,10,74,0,0,2.736,3.62,43
+Unvaccinated,11,48,0,0,3.075,4.06,43
+Unvaccinated,12,38,0,0,5.955,4.77,43
+Unvaccinated,13,37,0,0,6.774,4.69,43
+Unvaccinated,14,32,0,0,6.895,4.97,43
+Unvaccinated,15,50,0,0,3.853,4.06,43
+Unvaccinated,16,29,0,0,6.374,4.92,43
+Unvaccinated,17,32,0,0,6.714,4.49,43
+Unvaccinated,18,37,0,0,5.865,4.57,43
+Unvaccinated,19,45,0,0,5.653,4.19,43
+Unvaccinated,20,39,0,0,3.616,4.35,43
+Unvaccinated control,21,,0,0,5.955,0,43
+Unvaccinated control,22,,0,0,6.712,0,43
+Unvaccinated control,23,,0,0,3.658,0,43
+Unvaccinated control,24,,0,0,6.315,0,43
+Unvaccinated control,25,,0,0,6.999,0,43
+Unvaccinated control,26,,0,0,6.722,0,43
+Unvaccinated control,27,,0,0,7.097,0,43
+Unvaccinated control,28,,0,0,6.194,0,43
+Unvaccinated control,29,,0,0,3.958,0,43
+Unvaccinated control,30,,0,0,7.348,0,43
+Vaccinated,41,27,"12,540",4.1,5.675,,43
+Vaccinated,42,29,"2,971",3.47,7.216,5.86,43
+Vaccinated,44,55,"3,107",3.49,2.913,4.12,43
+Vaccinated,45,28,"6,741",3.83,5.296,,43
+Vaccinated,46,39,811,2.91,3.544,4.62,43
+Vaccinated,47,28,"21,940",4.34,5.398,,43
+Vaccinated,48,31,"2,076",3.32,5.666,6.83,43
+Vaccinated,49,30,"10,030",4,6.9,4.77,43
+Vaccinated,50,51,"7,269",3.86,3.285,3.03,43
+Vaccinated,51,30,"2,782",3.44,6.32,4.75,43
+Vaccinated,52,29,"6,917",3.84,6.287,6.79,43
+Vaccinated,53,30,"9,930",4,5.837,5.84,43
+Vaccinated,54,81,280,2.45,3.172,2.79,43
+Vaccinated,55,34,660,2.82,5.67,4.63,43
+Vaccinated,56,30,"8,217",3.91,5.611,4.94,43
+Vaccinated,57,31,"2,459",3.39,6.14,5.18,43
+Vaccinated,58,35,284,2.45,3.201,3.99,43
+Vaccinated,59,31,"1,789",3.25,6.392,4.48,43
+Vaccinated,60,76,789,2.9,2.998,1.28,43
+Vaccinated,72,32,"6,142",3.79,5.113,5.8,43
+Vaccinated control,61,,664,2.82,6.596,0,43
+Vaccinated control,62,,310,2.49,2.611,0,43
+Vaccinated control,63,,"3,040",3.48,5.508,0,43
+Vaccinated control,64,,198,2.3,5.342,0,43
+Vaccinated control,65,,"17,460",4.24,6.42,0,43
+Vaccinated control,66,,"1,437",3.16,6.799,0,43
+Vaccinated control,67,,541,2.73,6.945,0,43
+Vaccinated control,69,,"10,970",4.04,6.233,0,43
+Vaccinated control,70,,"11,230",4.05,3.272,0,43
+Vaccinated control,71,,"4,771",3.68,3.714,0,43
+Unvaccinated,1,32,0,0,5.414,,50
+Unvaccinated,2,30,0,0,3.502,,50
+Unvaccinated,3,27,0,0,6.2,,50
+Unvaccinated,4,51,0,0,6.568,3.96,50
+Unvaccinated,5,31,0,0,6.521,,50
+Unvaccinated,6,31,0,0,7.278,,50
+Unvaccinated,7,33,0,0,6.094,,50
+Unvaccinated,8,38,0,0,5.412,5.76,50
+Unvaccinated,9,30,0,0,6.22,,50
+Unvaccinated,10,74,0,0,2.736,2.4,50
+Unvaccinated,11,48,0,0,3.075,4.02,50
+Unvaccinated,12,38,0,0,5.955,6.76,50
+Unvaccinated,13,37,0,0,6.774,6.75,50
+Unvaccinated,14,32,0,0,6.895,,50
+Unvaccinated,15,50,0,0,3.853,4.39,50
+Unvaccinated,16,29,0,0,6.374,,50
+Unvaccinated,17,32,0,0,6.714,,50
+Unvaccinated,18,37,0,0,5.865,5.98,50
+Unvaccinated,19,45,0,0,5.653,4.07,50
+Unvaccinated,20,39,0,0,3.616,4.33,50
+Unvaccinated control,21,,0,0,5.955,0,50
+Unvaccinated control,22,,0,0,6.712,0,50
+Unvaccinated control,23,,0,0,3.658,0,50
+Unvaccinated control,24,,0,0,6.315,0,50
+Unvaccinated control,25,,0,0,6.999,0,50
+Unvaccinated control,26,,0,0,6.722,0,50
+Unvaccinated control,27,,0,0,7.097,0,50
+Unvaccinated control,28,,0,0,6.194,0,50
+Unvaccinated control,29,,0,0,3.958,0,50
+Unvaccinated control,30,,0,0,7.348,0,50
+Vaccinated,41,27,"12,540",4.1,5.675,,50
+Vaccinated,42,29,"2,971",3.47,7.216,,50
+Vaccinated,44,55,"3,107",3.49,2.913,2.99,50
+Vaccinated,45,28,"6,741",3.83,5.296,,50
+Vaccinated,46,39,811,2.91,3.544,5.49,50
+Vaccinated,47,28,"21,940",4.34,5.398,,50
+Vaccinated,48,31,"2,076",3.32,5.666,,50
+Vaccinated,49,30,"10,030",4,6.9,,50
+Vaccinated,50,51,"7,269",3.86,3.285,3.53,50
+Vaccinated,51,30,"2,782",3.44,6.32,,50
+Vaccinated,52,29,"6,917",3.84,6.287,,50
+Vaccinated,53,30,"9,930",4,5.837,,50
+Vaccinated,54,81,280,2.45,3.172,2.31,50
+Vaccinated,55,34,660,2.82,5.67,,50
+Vaccinated,56,30,"8,217",3.91,5.611,,50
+Vaccinated,57,31,"2,459",3.39,6.14,,50
+Vaccinated,58,35,284,2.45,3.201,,50
+Vaccinated,59,31,"1,789",3.25,6.392,,50
+Vaccinated,60,76,789,2.9,2.998,1.61,50
+Vaccinated,72,32,"6,142",3.79,5.113,,50
+Vaccinated control,61,,664,2.82,6.596,0,50
+Vaccinated control,62,,310,2.49,2.611,0,50
+Vaccinated control,63,,"3,040",3.48,5.508,0,50
+Vaccinated control,64,,198,2.3,5.342,0,50
+Vaccinated control,65,,"17,460",4.24,6.42,0,50
+Vaccinated control,66,,"1,437",3.16,6.799,0,50
+Vaccinated control,67,,541,2.73,6.945,0,50
+Vaccinated control,69,,"10,970",4.04,6.233,0,50
+Vaccinated control,70,,"11,230",4.05,3.272,0,50
+Vaccinated control,71,,"4,771",3.68,3.714,0,50
+Unvaccinated,1,32,0,0,5.414,,57
+Unvaccinated,2,30,0,0,3.502,,57
+Unvaccinated,3,27,0,0,6.2,,57
+Unvaccinated,4,51,0,0,6.568,5.81,57
+Unvaccinated,5,31,0,0,6.521,,57
+Unvaccinated,6,31,0,0,7.278,,57
+Unvaccinated,7,33,0,0,6.094,,57
+Unvaccinated,8,38,0,0,5.412,,57
+Unvaccinated,9,30,0,0,6.22,,57
+Unvaccinated,10,74,0,0,2.736,3.66,57
+Unvaccinated,11,48,0,0,3.075,5.38,57
+Unvaccinated,12,38,0,0,5.955,,57
+Unvaccinated,13,37,0,0,6.774,,57
+Unvaccinated,14,32,0,0,6.895,,57
+Unvaccinated,15,50,0,0,3.853,4.87,57
+Unvaccinated,16,29,0,0,6.374,,57
+Unvaccinated,17,32,0,0,6.714,,57
+Unvaccinated,18,37,0,0,5.865,,57
+Unvaccinated,19,45,0,0,5.653,5.89,57
+Unvaccinated,20,39,0,0,3.616,,57
+Unvaccinated control,21,,0,0,5.955,0,57
+Unvaccinated control,22,,0,0,6.712,0,57
+Unvaccinated control,23,,0,0,3.658,0,57
+Unvaccinated control,24,,0,0,6.315,0,57
+Unvaccinated control,25,,0,0,6.999,0,57
+Unvaccinated control,26,,0,0,6.722,0,57
+Unvaccinated control,27,,0,0,7.097,0,57
+Unvaccinated control,28,,0,0,6.194,0,57
+Unvaccinated control,29,,0,0,3.958,0,57
+Unvaccinated control,30,,0,0,7.348,0,57
+Vaccinated,41,27,"12,540",4.1,5.675,,57
+Vaccinated,42,29,"2,971",3.47,7.216,,57
+Vaccinated,44,55,"3,107",3.49,2.913,3.7,57
+Vaccinated,45,28,"6,741",3.83,5.296,,57
+Vaccinated,46,39,811,2.91,3.544,0,57
+Vaccinated,47,28,"21,940",4.34,5.398,,57
+Vaccinated,48,31,"2,076",3.32,5.666,,57
+Vaccinated,49,30,"10,030",4,6.9,,57
+Vaccinated,50,51,"7,269",3.86,3.285,5.48,57
+Vaccinated,51,30,"2,782",3.44,6.32,,57
+Vaccinated,52,29,"6,917",3.84,6.287,,57
+Vaccinated,53,30,"9,930",4,5.837,,57
+Vaccinated,54,81,280,2.45,3.172,3.02,57
+Vaccinated,55,34,660,2.82,5.67,,57
+Vaccinated,56,30,"8,217",3.91,5.611,,57
+Vaccinated,57,31,"2,459",3.39,6.14,,57
+Vaccinated,58,35,284,2.45,3.201,,57
+Vaccinated,59,31,"1,789",3.25,6.392,,57
+Vaccinated,60,76,789,2.9,2.998,2.64,57
+Vaccinated,72,32,"6,142",3.79,5.113,,57
+Vaccinated control,61,,664,2.82,6.596,0,57
+Vaccinated control,62,,310,2.49,2.611,0,57
+Vaccinated control,63,,"3,040",3.48,5.508,0,57
+Vaccinated control,64,,198,2.3,5.342,0,57
+Vaccinated control,65,,"17,460",4.24,6.42,0,57
+Vaccinated control,66,,"1,437",3.16,6.799,0,57
+Vaccinated control,67,,541,2.73,6.945,0,57
+Vaccinated control,69,,"10,970",4.04,6.233,0,57
+Vaccinated control,70,,"11,230",4.05,3.272,0,57
+Vaccinated control,71,,"4,771",3.68,3.714,0,57

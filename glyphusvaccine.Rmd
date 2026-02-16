@@ -1,0 +1,152 @@
+---
+title: Glyphus vaccine
+output: html_notebook
+editor_options: 
+  chunk_output_type: console
+---
+
+This is an [R Markdown](http://rmarkdown.rstudio.com) Notebook. When you execute code within the notebook, the results appear beneath the code. 
+
+Try executing this chunk by clicking the *Run* button within the chunk or by placing your cursor inside it and pressing *Cmd+Shift+Enter*. 
+
+```{r}
+#load libraries needed for survival analysis and to plot the graphics. 
+library(survival)
+library(ranger)
+library(ggplot2)
+library(dplyr)
+library(ggfortify)
+```
+
+
+```{r}
+#look at your data to see its imported properly
+
+glyphusvaccine <- read.csv("S1_Survivorship_Bd_load.csv")
+data(glyphusvaccine)
+head(glyphusvaccine)
+
+
+```
+
+
+```{r}
+
+glyphusvaccinenocontrols <- glyphusvaccine[glyphusvaccine$treatment %in% c ("Mock-Bd", "Bd-Bd"),]
+
+#log rank survivorship test
+survdiff(Surv(daydeath,censor)~ treatment, data =glyphusvaccinenocontrols)
+
+```
+
+```{r}
+# lets run analysis only on reinfected animals
+
+head(glyphusvaccinenocontrols)
+
+# plot kaplan meier survivorship curve 
+km <- with(glyphusvaccinenocontrols, Surv(daydeath, censor))
+km_trt_fit <- survfit(Surv(daydeath, censor) ~ treatment, data=glyphusvaccinenocontrols)
+autoplot(km_trt_fit)+theme_classic()
+
+#ggsave(filename="Survivorship.pdf")
+```
+
+
+```{r}
+# Plot Kaplan-Meier survivorship curve with custom colors
+km_trt_fit <- survfit(Surv(daydeath, censor) ~ treatment, data=glyphusvaccinenocontrols)
+
+# Create the plot with custom colors
+autoplot(km_trt_fit) +
+  theme_classic() +
+  scale_color_manual(values = c("Bd-Bd" = "#732f30", "Mock-Bd" = "#b38711")) +
+  scale_fill_manual(values = c("Bd-Bd" = "#732f30", "Mock-Bd" = "#b38711"))
+```
+
+
+```{r}
+# Fit Cox Model using vaccination as treatment with sex and vacc load as cofactors
+# Only Bd-Bd and Mock-Bd have daydeath and are included in model
+cox <- coxph(Surv(daydeath) ~ treatment+ logvaccload + sex+ weight11sept +log14day, data=glyphusvaccine)
+summary(cox)
+
+
+#THIS IS  ANALYSIS WITH SCALED BD LOADS FOR VACCINATED to compare hazard ratios. 
+#Presented in paper
+#load libraries needed for survival analysis and to plot the graphics. 
+
+# Scale the predictors logvaccload and log14day
+# This centers them (mean = 0) and scales them (sd = 1)
+glyphusvaccine <- glyphusvaccine %>%
+  mutate(
+    logvaccload_scaled = scale(logvaccload)[,1],
+    log14day_scaled = scale(log14day)[,1]
+  )
+
+# Check the scaling worked correctly
+cat("Original logvaccload - Mean:", mean(glyphusvaccine$logvaccload, na.rm=TRUE), 
+    "SD:", sd(glyphusvaccine$logvaccload, na.rm=TRUE), "\n")
+cat("Scaled logvaccload - Mean:", mean(glyphusvaccine$logvaccload_scaled, na.rm=TRUE), 
+    "SD:", sd(glyphusvaccine$logvaccload_scaled, na.rm=TRUE), "\n")
+cat("Original log14day - Mean:", mean(glyphusvaccine$log14day, na.rm=TRUE), 
+    "SD:", sd(glyphusvaccine$log14day, na.rm=TRUE), "\n")
+cat("Scaled log14day - Mean:", mean(glyphusvaccine$log14day_scaled, na.rm=TRUE), 
+    "SD:", sd(glyphusvaccine$log14day_scaled, na.rm=TRUE), "\n")
+
+
+
+# Fit Cox Model using vaccination as treatment with sex and vacc load as cofactors
+# Now using SCALED versions of logvaccload and log14day
+cox <- coxph(Surv(daydeath,censor) ~ treatment + sex + logvaccload_scaled + weight11sept + log14day_scaled, data=glyphusvaccine)
+summary(cox)
+
+# Optional: Compare models with and without scaling
+cox_unscaled <- coxph(Surv(daydeath,censor) ~ treatment + sex + logvaccload + weight11sept + log14day, data=glyphusvaccine)
+
+cat("\n=== COMPARISON ===\n")
+cat("Unscaled model AIC:", AIC(cox_unscaled), "\n")
+cat("Scaled model AIC:", AIC(cox), "\n")
+
+
+```
+
+
+```{r}
+
+
+#Examine Bd loads by treatment group over time
+
+bdloads <- read.csv("bdloads.csv")
+
+bdloads_nocontrol <- bdloads[bdloads$treatment %in% c ("Unvaccinated", "Vaccinated"),]
+
+
+
+
+Bdloads <- ggplot(bdloads_nocontrol, aes(x=day, y=logBdload, color=treatment, shape=treatment )) + 
+  geom_point()+
+  geom_smooth()+
+  labs(title=" ",
+       x="day)", y = "Bd load (zoospore equivalents log 10 +1)")+
+  theme_classic()
+
+## Fixed names later Bd-Bd = Vaccinated and Mock-Bd = Unvaccinated
+## removes NAs
+#Examine Bd loads by treatment group over time no controls and correct colors
+autoplot(Bdloads) +
+  theme_classic() +
+  scale_color_manual(values = c("Vaccinated" = "#732f30", "Unvaccinated" = "#b38711")) +
+  scale_fill_manual(values = c("Vaccinated" = "#732f30", "Unvaccinated" = "#b38711")) 
+
+
+#ggsave(filename="Bdloads.pdf", plot=Bdloads)
+
+
+
+
+
+
+```
+
+
